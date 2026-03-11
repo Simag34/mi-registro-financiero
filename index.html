@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Registro Mensual</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f9; padding: 20px; color: #333; }
+        .contenedor { max-width: 600px; margin: 0 auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        h2, h3 { text-align: center; color: #2c3e50; }
+        .totales { display: flex; justify-content: space-between; margin-bottom: 25px; gap: 10px; }
+        .caja { padding: 15px; border-radius: 8px; width: 33%; color: white; font-weight: bold; text-align: center; font-size: 0.9em; }
+        .caja-ventas { background-color: #2ecc71; } 
+        .caja-gastos { background-color: #e74c3c; } 
+        .caja-balance { background-color: #3498db; } 
+        input, button { padding: 12px; margin: 8px 0; width: 100%; box-sizing: border-box; border: 1px solid #ddd; border-radius: 6px; }
+        .fila-inputs { display: flex; gap: 10px; }
+        button { background-color: #2c3e50; color: white; border: none; cursor: pointer; font-weight: bold; transition: background 0.3s; }
+        button:hover { background-color: #455a64; }
+        .lista { list-style-type: none; padding: 0; margin-top: 20px; }
+        .lista li { background: #fff; margin: 10px 0; padding: 15px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #eee; border-left: 5px solid #2c3e50; border-radius: 4px; }
+        .btn-borrar { background-color: #e74c3c; width: auto; padding: 6px 12px; font-size: 0.8em; }
+        hr { margin: 25px 0; border: 0; border-top: 1px solid #eee; }
+    </style>
+</head>
+<body>
+
+<div class="contenedor">
+    <h2>📊 Resumen Acumulado</h2>
+    
+    <div class="totales">
+        <div class="caja caja-ventas">Ventas<br>$<span id="total-ventas">0.00</span></div>
+        <div class="caja caja-gastos">Gastos<br>$<span id="total-gastos">0.00</span></div>
+        <div class="caja caja-balance">Neto<br>$<span id="balance-neto">0.00</span></div>
+    </div>
+
+    <h3>Cargar Cierre del Día</h3>
+    <label for="fecha">Fecha:</label>
+    <input type="date" id="fecha">
+    
+    <div class="fila-inputs">
+        <input type="number" id="ventasDia" placeholder="Ventas ($)" min="0">
+        <input type="number" id="gastosDia" placeholder="Gastos ($)" min="0">
+    </div>
+    
+    <button onclick="crearRegistro()">Guardar Día</button>
+
+    <hr>
+
+    <h3>Historial Diario</h3>
+    <ul class="lista" id="lista-movimientos"></ul>
+</div>
+
+<script>
+    // 1. CARGAR DATOS (Persistencia con LocalStorage)
+    let registros = JSON.parse(localStorage.getItem('misFinanzasDiarias')) || [];
+    
+    // Inicializar la pantalla al cargar
+    window.onload = actualizarPantalla;
+
+    // 2. GUARDAR (Se llama automáticamente en cada cambio)
+    function guardarDatos() {
+        localStorage.setItem('misFinanzasDiarias', JSON.stringify(registros));
+        actualizarPantalla();
+    }
+
+    // 3. CREATE (Añadir nuevo día)
+    function crearRegistro() {
+        const fechaInput = document.getElementById('fecha');
+        const ventasInput = document.getElementById('ventasDia');
+        const gastosInput = document.getElementById('gastosDia');
+
+        if (fechaInput.value === "") {
+            alert("Por favor, selecciona una fecha.");
+            return;
+        }
+
+        const nuevoRegistro = {
+            id: Date.now(), // ID único basado en tiempo
+            fecha: fechaInput.value,
+            ventas: parseFloat(ventasInput.value) || 0,
+            gastos: parseFloat(gastosInput.value) || 0
+        };
+
+        registros.push(nuevoRegistro);
+        
+        // Limpiar formulario
+        fechaInput.value = "";
+        ventasInput.value = "";
+        gastosInput.value = "";
+
+        guardarDatos();
+    }
+
+    // 4. READ (Mostrar y calcular totales)
+    function actualizarPantalla() {
+        const listaHTML = document.getElementById('lista-movimientos');
+        listaHTML.innerHTML = ""; 
+
+        let totalVentas = 0;
+        let totalGastos = 0;
+
+        // Ordenar registros de más reciente a más antiguo
+        registros.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+
+        registros.forEach(r => {
+            totalVentas += r.ventas;
+            totalGastos += r.gastos;
+
+            listaHTML.innerHTML += `
+                <li>
+                    <div>
+                        <strong>📅 ${r.fecha}</strong><br>
+                        <small style="color: #27ae60">Ventas: $${r.ventas.toFixed(2)}</small> | 
+                        <small style="color: #c0392b">Gastos: $${r.gastos.toFixed(2)}</small>
+                    </div>
+                    <button class="btn-borrar" onclick="borrarRegistro(${r.id})">Borrar</button>
+                </li>
+            `;
+        });
+
+        const balance = totalVentas - totalGastos;
+
+        document.getElementById('total-ventas').innerText = totalVentas.toLocaleString();
+        document.getElementById('total-gastos').innerText = totalGastos.toLocaleString();
+        document.getElementById('balance-neto').innerText = balance.toLocaleString();
+    }
+
+    // 5. DELETE (Borrar registro específico)
+    function borrarRegistro(id) {
+        if(confirm("¿Seguro que quieres borrar este día?")) {
+            registros = registros.filter(r => r.id !== id);
+            guardarDatos();
+        }
+    }
+</script>
+
+</body>
+</html>
